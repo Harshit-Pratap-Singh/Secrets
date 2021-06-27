@@ -5,8 +5,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const ejs = require('ejs');
 const bodyParser = require('body-parser');
-const md5=require("md5");
+// const md5=require("md5");
+
 const app=express();
+const bcrypt = require('bcrypt');
+const rounds=10;
 
 mongoose.connect("mongodb://localhost:27017/secretDB",{useNewUrlParser : true, useUnifiedTopology: true});
 
@@ -33,22 +36,26 @@ app.get("/register",function(req,res){
 });
 
 app.post("/register",function(req,res){
-  const user=new User({
-    name: req.body.username,
-    password: md5(req.body.password)
+  bcrypt.hash(req.body.password,rounds,function(err,hash){
+    const user=new User({
+      name: req.body.username,
+      password: hash
+    });
+    user.save(function(err){
+      if(err)console.log(err);
+      else res.render("secrets");
+    });
   });
-  user.save(function(err){
-    if(err)console.log(err);
-    else res.render("secrets");
-  });
-})
+});
 
 app.post("/login",function(req,res){
   User.findOne({name: req.body.username},function(err,found){
     if(err)console.log(err);
     else {
       if(found){
-        if(found.password===md5(req.body.password))res.render("secrets");
+          bcrypt.compare(req.body.password,found.password,function(err){
+        if(found)res.render("secrets");
+      });
       }
     }
   });
